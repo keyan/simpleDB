@@ -1,0 +1,8 @@
+*.swo
+*.swp
+.*.swo
+.*.swp
+venv/
+*.aux
+*.out
+.DS_Store
