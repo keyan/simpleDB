@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/keyan/simpledb/rpc"
 )
 
 // memStorage is the representation of in-memory data.
 // A new type is declared because this is shared with the journal.
-type memStorage map[string][]byte
+type memStorage map[string]rpc.ValueType
 
 // Database is the main interface for data storage and access for callers.
 type Database struct {
@@ -30,7 +32,7 @@ type Database struct {
 // to serve requests.
 func New() *Database {
 	db := &Database{
-		data: map[string][]byte{},
+		data: memStorage{},
 		j:    newJournal(),
 	}
 
@@ -47,7 +49,7 @@ func New() *Database {
 
 // Get stores returns the value for provided key. If not present in the Database then
 // an error is returned instead.
-func (s *Database) Get(key string) ([]byte, error) {
+func (s *Database) Get(key string) (rpc.ValueType, error) {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -60,7 +62,7 @@ func (s *Database) Get(key string) ([]byte, error) {
 }
 
 // Set updates the value for provided key. If not already present the value is silently added.
-func (s *Database) Set(key string, value []byte) {
+func (s *Database) Set(key string, value rpc.ValueType) {
 	s.Lock()
 	defer s.Unlock()
 
