@@ -20,6 +20,7 @@ func randStringBytes(n int) string {
 }
 
 func RunSimClient(pingRateMs int) {
+	fmt.Println("starting simulation client...")
 	go func() {
 		for {
 			time.Sleep(time.Duration(pingRateMs) * time.Millisecond)
@@ -28,12 +29,10 @@ func RunSimClient(pingRateMs int) {
 
 			switch roll := rand.Intn(10); {
 			case roll < 3:
-				resp := doGet(key)
-				fmt.Printf("Get op, key: %s, val: %s\n", key, resp)
-			case roll < 8:
+				doGet(key)
+			case roll < 7:
 				value := randStringBytes(strLen)
 				doSet(key, value)
-				fmt.Printf("Set op, key: %s, val: %s\n", key, value)
 			default:
 				doDelete(key)
 			}

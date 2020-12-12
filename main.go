@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"math/rand"
 	"os/exec"
 	"time"
@@ -28,7 +29,7 @@ func main() {
 
 	switch {
 	case *simMode:
-		simulation()
+		runSimulation()
 	case *clientMode:
 		client.SetServerAddr(serverAddr)
 		client.Run()
@@ -37,9 +38,18 @@ func main() {
 	}
 }
 
-func simulation() {
+// startServerProcess starts the DB server in a separate forked process.
+func startServerProcess() *exec.Cmd {
+	fmt.Println("starting server process")
 	cmd := exec.Command("./simpledb")
-	// cmd.Start()
+	cmd.Start()
+	return cmd
+}
+
+// runSimulation starts a DB server in new process, starts a bunch of simulated
+// clients that make random requests, and occasionally restarts the DB server.
+func runSimulation() {
+	cmd := startServerProcess()
 
 	client.SetServerAddr(serverAddr)
 	for i := 0; i < simClients; i++ {
@@ -48,10 +58,12 @@ func simulation() {
 
 	for {
 		val := rand.Intn(100)
-		if val > 100 {
+		if val > 90 {
+			fmt.Println("forcibly killing server process")
 			cmd.Process.Kill()
+			cmd = startServerProcess()
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 }
