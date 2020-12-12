@@ -11,6 +11,10 @@ server:
 client: build
 	./simpledb -client
 
+.PHONY: sim
+sim: build
+	./simpledb -simulation
+
 .PHONY: clean
 clean:
 	rm simpledb

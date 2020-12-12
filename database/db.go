@@ -19,14 +19,10 @@ type Database struct {
 	// The write-ahead-log used to track changes and checkpoint full state.
 	j journal
 
-	// A table of locks for each key in the underlying datastore.
-	// Concurrent access is allowed so each key must be protected from reads during
-	// a write operation.
-	locks map[string]sync.RWMutex
-
-	// Central lock must be acquired when adding a new key to `data` because that
-	// requires also adding a new RWMutex to `locks`.
-	locksMutex sync.RWMutex
+	// Central lock is required for Set/Delete operations. Could be possible
+	// to do key-level locking which would allow update Set operations to not
+	// take a global lock, but not doing that for now.
+	sync.RWMutex
 }
 
 // New creates a new Database struct, loads any available data from disk, schedules
@@ -34,9 +30,8 @@ type Database struct {
 // to serve requests.
 func New() *Database {
 	db := &Database{
-		data:  map[string][]byte{},
-		locks: map[string]sync.RWMutex{},
-		j:     newJournal(),
+		data: map[string][]byte{},
+		j:    newJournal(),
 	}
 
 	err := db.loadStateFromDisk()
@@ -53,18 +48,12 @@ func New() *Database {
 // Get stores returns the value for provided key. If not present in the Database then
 // an error is returned instead.
 func (s *Database) Get(key string) ([]byte, error) {
-	s.locksMutex.RLock()
-	mu, ok := s.locks[key]
-	s.locksMutex.RUnlock()
-	if !ok {
-		return nil, errors.New("Key not found")
-	}
-	mu.RLock()
-	defer mu.RUnlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	val, ok := s.data[key]
 	if !ok {
-		return nil, errors.New("Key not found, but lock present")
+		return nil, errors.New("Key not found")
 	}
 
 	return val, nil
@@ -72,19 +61,8 @@ func (s *Database) Get(key string) ([]byte, error) {
 
 // Set updates the value for provided key. If not already present the value is silently added.
 func (s *Database) Set(key string, value []byte) {
-	s.locksMutex.RLock()
-	mu, ok := s.locks[key]
-	s.locksMutex.RUnlock()
-
-	// This key has never been set, so it needs a new lock too.
-	if !ok {
-		s.locksMutex.Lock()
-		mu = sync.RWMutex{}
-		s.locks[key] = mu
-		s.locksMutex.Unlock()
-	}
-	mu.Lock()
-	defer mu.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	s.j.addWriteOp(key, value)
 	s.data[key] = value
@@ -92,15 +70,8 @@ func (s *Database) Set(key string, value []byte) {
 
 // Delete removes the value for the provided key.
 func (s *Database) Delete(key string) {
-	s.locksMutex.RLock()
-	mu, ok := s.locks[key]
-	s.locksMutex.RUnlock()
-	if !ok {
-		return
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	s.j.addRemoveOp(key)
 	delete(s.data, key)
@@ -120,8 +91,8 @@ func (s *Database) scheduleCheckpoints() error {
 	for {
 		time.Sleep(10 * time.Second)
 
-		s.locksMutex.Lock()
+		s.Lock()
 		s.j.checkpoint(s.data)
-		s.locksMutex.Unlock()
+		s.Unlock()
 	}
 }

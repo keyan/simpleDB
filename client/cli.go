@@ -21,8 +21,11 @@ const (
 
 var serverAddr string
 
-func Run(addr string) {
+func SetServerAddr(addr string) {
 	serverAddr = "http://" + addr
+}
+
+func Run() {
 	fmt.Printf("-- SimpleDB CLI --\n\n")
 	printHelp()
 	for {
@@ -48,7 +51,8 @@ func Run(addr string) {
 			if len(sepInput) != 2 {
 				fmt.Println("Invalid number of options provided")
 			} else {
-				doGet(sepInput[1])
+				resp := doGet(sepInput[1])
+				fmt.Printf("%s\n", resp)
 			}
 		case "set":
 			if len(sepInput) != 3 {
@@ -77,10 +81,9 @@ func printHelp() {
 	fmt.Printf("%v%v \n", strings.Repeat(" ", 5), "delete <key>")
 }
 
-func doGet(key string) {
+func doGet(key string) string {
 	msg := rpc.NewGetMsg(key)
-	resp := callServer(msg)
-	fmt.Printf("%s\n", resp)
+	return callServer(msg)
 }
 
 func doSet(key string, val string) {
@@ -93,13 +96,13 @@ func doDelete(key string) {
 	callServer(msg)
 }
 
-func callServer(msg *bytes.Buffer) []byte {
+func callServer(msg *bytes.Buffer) string {
 	resp, err := http.Post(serverAddr, contentType, msg)
 	if err != nil {
 		fmt.Println("Could not issue command, err: %v", err)
-		return nil
+		return ""
 	}
 	defer resp.Body.Close()
 	b, _ := ioutil.ReadAll(resp.Body)
-	return b
+	return string(b)
 }
