@@ -2,7 +2,7 @@
 
 A persistent key-value store implementation from the paper ["A simple and efficient implementation of a small database"][paper].
 
-Data is stored in a Go `map` and a write-ahead-log is used to ensure atomic updates. Restarts/crashes will use any available logs and checkpoints stored in `database/data` to reload state during startup. The structure of this directory closely matches the implementation guidelines in the end of Section 3 of the paper.
+Data is stored in a builtin `map` and a write-ahead-log is used to ensure atomic updates. Restarts/crashes will use any available logs and checkpoints stored in `./data` to reload state during startup. The structure of this directory closely matches the implementation guidelines in the end of Section 3 of the paper.
 
 The client/server communicatation uses [`gob`][gob] over HTTP.
 
@@ -11,13 +11,6 @@ The client/server communicatation uses [`gob`][gob] over HTTP.
 Start the DB server with:
 ```
 $ make server
-```
-
-The server interface is limited to:
-```
-put(key,value)
-get(key)
-delete(key)
 ```
 
 Commands can be issued using the client CLI:

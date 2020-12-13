@@ -29,16 +29,16 @@ func Run(serverAddr string) {
 		msg := rpc.DecodeMsg(r.Body)
 		switch msg.Op {
 		case rpc.Get:
-			val, err := db.Get(msg.Key)
+			val, err := db.Get(msg)
 			if err != nil {
 				fmt.Fprintf(w, "%v", err)
 			} else {
 				fmt.Fprintf(w, string(val))
 			}
 		case rpc.Set:
-			db.Set(msg.Key, msg.Value)
+			db.Set(msg)
 		case rpc.Delete:
-			db.Delete(msg.Key)
+			db.Delete(msg)
 		default:
 			fmt.Fprintf(w, "Unknown operation type")
 		}

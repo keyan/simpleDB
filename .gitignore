@@ -7,3 +7,4 @@ venv/
 *.out
 .DS_Store
 simpledb
+data/

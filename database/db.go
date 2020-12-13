@@ -9,6 +9,10 @@ import (
 	"github.com/keyan/simpledb/rpc"
 )
 
+const (
+	checkPointCadenceSecs = 10
+)
+
 // memStorage is the representation of in-memory data.
 // A new type is declared because this is shared with the journal.
 type memStorage map[string]rpc.ValueType
@@ -49,11 +53,11 @@ func New() *Database {
 
 // Get stores returns the value for provided key. If not present in the Database then
 // an error is returned instead.
-func (s *Database) Get(key string) (rpc.ValueType, error) {
+func (s *Database) Get(msg *rpc.Msg) (rpc.ValueType, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	val, ok := s.data[key]
+	val, ok := s.data[msg.Key]
 	if !ok {
 		return nil, errors.New("Key not found")
 	}
@@ -62,28 +66,28 @@ func (s *Database) Get(key string) (rpc.ValueType, error) {
 }
 
 // Set updates the value for provided key. If not already present the value is silently added.
-func (s *Database) Set(key string, value rpc.ValueType) {
+func (s *Database) Set(msg *rpc.Msg) {
 	s.Lock()
 	defer s.Unlock()
 
-	s.j.addWriteOp(key, value)
-	s.data[key] = value
+	s.j.addOp(msg)
+	s.data[msg.Key] = msg.Value
 }
 
 // Delete removes the value for the provided key.
-func (s *Database) Delete(key string) {
+func (s *Database) Delete(msg *rpc.Msg) {
 	s.Lock()
 	defer s.Unlock()
 
-	s.j.addRemoveOp(key)
-	delete(s.data, key)
+	s.j.addOp(msg)
+	delete(s.data, msg.Key)
 }
 
 // loadStateFromDisk is run when a new Database{} is created so that any on-disk state is
 // reloaded into the Database before providing callers access. If no prior on-disk data is
 // available the database is simply empty at creation.
 func (s *Database) loadStateFromDisk() error {
-	return s.j.load(s.data)
+	return s.j.initialize(s.data)
 }
 
 // scheduleCheckpoints captures the entire db state to disk after some amount of time. It should
@@ -91,7 +95,7 @@ func (s *Database) loadStateFromDisk() error {
 // off startup time or runtime performance, i.e. more checkpoints will slow down runtime performance.
 func (s *Database) scheduleCheckpoints() error {
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(time.Duration(checkPointCadenceSecs) * time.Second)
 
 		s.Lock()
 		s.j.checkpoint(s.data)

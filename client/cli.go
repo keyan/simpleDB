@@ -99,7 +99,7 @@ func doDelete(key string) {
 func callServer(msg *bytes.Buffer) string {
 	resp, err := http.Post(serverAddr, contentType, msg)
 	if err != nil {
-		fmt.Println("Could not issue command, err: %v", err)
+		fmt.Printf("Could not issue command, err: %v\n", err)
 		return ""
 	}
 	defer resp.Body.Close()
